@@ -11,7 +11,7 @@ global.maplocalleader = " "
 -- Editor options
 o.number = true
 o.relativenumber = true
-o.clipboard = unnamedplus
+o.clipboard = "unnamedplus"
 o.syntax = "on"
 o.autoindent = true
 o.expandtab = true
