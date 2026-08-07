@@ -28,6 +28,7 @@ o.wildmenu = true
 o.showcmd = true
 o.showmatch = true
 o.inccommand = "split"
+o.termguicolors = false
 
 local function set_yank_hl()
   api.nvim_set_hl(0, "YankHighlight", { link = "Visual" })
