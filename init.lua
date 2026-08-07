@@ -29,3 +29,6 @@ require("lazy").setup({
 })
 
 require("keymaps")
+
+local theme = require("theme")
+vim.keymap.set("n", "<leader>tt", theme.toggle, { desc = "Toggle light/dark" })

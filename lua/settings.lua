@@ -29,9 +29,16 @@ o.showcmd = true
 o.showmatch = true
 o.inccommand = "split"
 
-api.nvim_set_hl(0, "HighlightedyankRegion", { bg = "#45475a" })
+local function set_yank_hl()
+  api.nvim_set_hl(0, "YankHighlight", { link = "Visual" })
+end
+
+set_yank_hl()
+api.nvim_create_autocmd("ColorScheme", { callback = set_yank_hl })
+
 api.nvim_create_autocmd("TextYankPost", {
-	callback = function()
-		vim.highlight.on_yank({ higroup = "IncSearch", timeout = 300 })
-	end,
+  callback = function()
+    local hl = vim.hl or vim.highlight
+    hl.on_yank({ higroup = "YankHighlight", timeout = 300 })
+  end,
 })
