@@ -73,6 +73,13 @@ return {
 			},
 		})
 
+		cmp.setup.filetype({ "sql", "mysql", "plsql" }, {
+			sources = cmp.config.sources({
+				{ name = "vim-dadbod-completion" },
+				{ name = "buffer" },
+			}),
+		})
+
 		-- Make autopairs and cmp cooperate on <CR>
 		local ok, autopairs = pcall(require, "nvim-autopairs.completion.cmp")
 		if ok then
