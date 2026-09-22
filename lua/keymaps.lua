@@ -17,17 +17,46 @@ km.set("n", "<C-d>", "<C-d>zz", { desc = "Scroll down and center buffer" })
 
 -- =========================================================================
 --  PANE NAVIGATION  <A-hjkl>
+--  Moves between nvim splits; hands off to tmux panes at the edge.
 -- =========================================================================
-km.set("n", "<A-h>", "<C-w>h", { desc = "Go to left pane" })
-km.set("n", "<A-j>", "<C-w>j", { desc = "Go to lower pane" })
-km.set("n", "<A-k>", "<C-w>k", { desc = "Go to upper pane" })
-km.set("n", "<A-l>", "<C-w>l", { desc = "Go to right pane" })
+local function nav(dir, tmux_dir)
+	local win = vim.fn.winnr()
+	vim.cmd("wincmd " .. dir)
+	if vim.fn.winnr() == win and (vim.env.TMUX or vim.env.TMUX_PANE) then
+		vim.fn.system({ "tmux", "select-pane", "-" .. tmux_dir })
+	end
+end
+
+km.set("n", "<A-h>", function()
+	nav("h", "L")
+end, { desc = "Go to left pane" })
+km.set("n", "<A-j>", function()
+	nav("j", "D")
+end, { desc = "Go to lower pane" })
+km.set("n", "<A-k>", function()
+	nav("k", "U")
+end, { desc = "Go to upper pane" })
+km.set("n", "<A-l>", function()
+	nav("l", "R")
+end, { desc = "Go to right pane" })
 
 -- Same from a terminal buffer
-km.set("t", "<A-h>", "<C-\\><C-n><C-w>h", { desc = "Go to left pane" })
-km.set("t", "<A-j>", "<C-\\><C-n><C-w>j", { desc = "Go to lower pane" })
-km.set("t", "<A-k>", "<C-\\><C-n><C-w>k", { desc = "Go to upper pane" })
-km.set("t", "<A-l>", "<C-\\><C-n><C-w>l", { desc = "Go to right pane" })
+km.set("t", "<A-h>", function()
+	vim.cmd("stopinsert")
+	nav("h", "L")
+end, { desc = "Go to left pane" })
+km.set("t", "<A-j>", function()
+	vim.cmd("stopinsert")
+	nav("j", "D")
+end, { desc = "Go to lower pane" })
+km.set("t", "<A-k>", function()
+	vim.cmd("stopinsert")
+	nav("k", "U")
+end, { desc = "Go to upper pane" })
+km.set("t", "<A-l>", function()
+	vim.cmd("stopinsert")
+	nav("l", "R")
+end, { desc = "Go to right pane" })
 
 -- =========================================================================
 --  PANE RESIZING  <S-A-hjkl>
@@ -35,17 +64,32 @@ km.set("t", "<A-l>", "<C-\\><C-n><C-w>l", { desc = "Go to right pane" })
 -- =========================================================================
 local function resize(dir)
 	local step = 5
-	if dir == "h" or dir == "l" then
-		local rightmost = vim.fn.winnr("l") == vim.fn.winnr()
+	local cur = vim.fn.winnr()
+	local horizontal = dir == "h" or dir == "l"
+
+	-- No nvim split along this axis: resize the tmux pane instead
+	local alone
+	if horizontal then
+		alone = vim.fn.winnr("h") == cur and vim.fn.winnr("l") == cur
+	else
+		alone = vim.fn.winnr("k") == cur and vim.fn.winnr("j") == cur
+	end
+	if alone and (vim.env.TMUX or vim.env.TMUX_PANE) then
+		local tmux_dir = ({ h = "L", j = "D", k = "U", l = "R" })[dir]
+		vim.fn.system({ "tmux", "resize-pane", "-" .. tmux_dir, tostring(step) })
+		return
+	end
+
+	if horizontal then
+		local rightmost = vim.fn.winnr("l") == cur
 		local grow = (dir == "h") == rightmost
 		vim.cmd(("vertical resize %s%d"):format(grow and "+" or "-", step))
 	else
-		local bottom = vim.fn.winnr("j") == vim.fn.winnr()
+		local bottom = vim.fn.winnr("j") == cur
 		local grow = (dir == "k") == bottom
 		vim.cmd(("resize %s%d"):format(grow and "+" or "-", step))
 	end
 end
-
 km.set("n", "<S-A-h>", function()
 	resize("h")
 end, { desc = "Resize window left" })
