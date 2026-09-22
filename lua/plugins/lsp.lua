@@ -13,6 +13,13 @@ return {
 		opts = {
 			ensure_installed = {
 				"stylua",
+				"prettierd",
+				"prettier",
+				"sql-formatter",
+				"shfmt",
+				"shellcheck",
+				"hadolint",
+				"actionlint",
 			},
 			auto_update = false,
 			run_on_start = true,
@@ -27,6 +34,7 @@ return {
 			"mason-org/mason.nvim",
 			"mason-org/mason-lspconfig.nvim",
 			"hrsh7th/cmp-nvim-lsp",
+			"b0o/SchemaStore.nvim",
 		},
 		config = function()
 			local capabilities = require("cmp_nvim_lsp").default_capabilities()
@@ -41,6 +49,7 @@ return {
 			})
 
 			local servers = {
+				-- Python
 				pyright = {
 					settings = {
 						python = {
@@ -53,7 +62,58 @@ return {
 					},
 				},
 				ruff = {},
-				jsonls = {},
+
+				-- Docker
+				dockerls = {},
+				docker_compose_language_service = {},
+
+				-- Azure / infra
+				bicep = {},
+				yamlls = {
+					settings = {
+						yaml = {
+							schemaStore = { enable = false, url = "" },
+							schemas = require("schemastore").yaml.schemas(),
+						},
+					},
+				},
+
+				-- TypeScript / JavaScript
+				vtsls = {
+					settings = {
+						complete_function_calls = true,
+						vtsls = {
+							autoUseWorkspaceTsdk = true,
+							enableMoveToFileCodeAction = true,
+							experimental = {
+								completion = { enableServerSideFuzzyMatch = true },
+							},
+						},
+						typescript = {
+							updateImportsOnFileMove = { enabled = "always" },
+							suggest = { completeFunctionCalls = true },
+							inlayHints = {
+								parameterNames = { enabled = "literals" },
+								parameterTypes = { enabled = true },
+								variableTypes = { enabled = false },
+								propertyDeclarationTypes = { enabled = true },
+								functionLikeReturnTypes = { enabled = true },
+								enumMemberValues = { enabled = true },
+							},
+						},
+					},
+				},
+				eslint = {},
+
+				-- Other
+				jsonls = {
+					settings = {
+						json = {
+							schemas = require("schemastore").json.schemas(),
+							validate = { enable = true },
+						},
+					},
+				},
 				lua_ls = {
 					settings = {
 						Lua = {
@@ -67,16 +127,21 @@ return {
 						},
 					},
 				},
+				lemminx = {},
+				bashls = {},
+				marksman = {},
+				powershell_es = {},
 			}
 
-			require("mason-lspconfig").setup({
-				ensure_installed = vim.tbl_keys(servers),
-			})
-
+			-- Register configs before mason-lspconfig enables the servers
 			for name, config in pairs(servers) do
 				config.capabilities = capabilities
 				vim.lsp.config(name, config)
 			end
+
+			require("mason-lspconfig").setup({
+				ensure_installed = vim.tbl_keys(servers),
+			})
 
 			vim.api.nvim_create_autocmd("LspAttach", {
 				group = vim.api.nvim_create_augroup("UserLspAttach", { clear = true }),
@@ -95,6 +160,12 @@ return {
 					-- Information
 					map("K", vim.lsp.buf.hover, "Hover docs")
 					map("<C-k>", vim.lsp.buf.signature_help, "Signature help", "i")
+					map("<leader>lh", function()
+						vim.lsp.inlay_hint.enable(
+							not vim.lsp.inlay_hint.is_enabled({ bufnr = ev.buf }),
+							{ bufnr = ev.buf }
+						)
+					end, "Toggle inlay hints")
 
 					-- Actions
 					map("<leader>lr", vim.lsp.buf.rename, "Rename symbol")
@@ -120,6 +191,24 @@ return {
 					map("]d", function()
 						vim.diagnostic.jump({ count = 1 })
 					end, "Next diagnostic")
+
+					-- Server-specific setup
+					local client = vim.lsp.get_client_by_id(ev.data.client_id)
+					if not client then
+						return
+					end
+
+					if client:supports_method("textDocument/inlayHint") then
+						vim.lsp.inlay_hint.enable(true, { bufnr = ev.buf })
+					end
+
+					if client.name == "eslint" then
+						vim.api.nvim_create_autocmd("BufWritePre", {
+							group = vim.api.nvim_create_augroup("EslintFixOnSave" .. ev.buf, { clear = true }),
+							buffer = ev.buf,
+							command = "LspEslintFixAll",
+						})
+					end
 				end,
 			})
 		end,
